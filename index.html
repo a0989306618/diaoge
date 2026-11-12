@@ -1,0 +1,110 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>屌哥聖經｜我說的算</title><style>*{box-sizing:border-box}body{margin:0;background:#f4f7f6;color:#173d36;font-family:system-ui,-apple-system,'Noto Sans TC',sans-serif}main{max-width:720px;margin:auto;padding:18px 15px 50px}header{background:#176b57;color:white;border-radius:20px;padding:22px}h1{font-size:23px;margin:0 0 8px}header p{margin:0;font-size:13px;opacity:.85}.progress{display:flex;gap:6px;margin:20px 0}.progress span{flex:1;height:6px;border-radius:5px;background:#d5e4df}.progress span.on{background:#149c78}.panel{background:white;border:1px solid #dce7e3;border-radius:20px;padding:20px;box-shadow:0 3px 15px #173d3610}h2{font-size:21px;margin:0 0 20px}h3{font-size:17px;margin:18px 0 10px}.choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.choice{background:white;border:1px solid #bdd1ca;border-radius:12px;padding:13px 7px;color:#17493d;font-size:16px;min-height:51px}.choice.selected{background:#d9f4e9;border:2px solid #08785c;font-weight:700}.nav{display:flex;gap:10px;margin-top:25px}.nav button,.primary{border:0;border-radius:12px;padding:14px 18px;font-size:16px;font-weight:700}.nav button{flex:1}.primary{background:#12765b;color:white}.secondary{background:#e7eeeb;color:#17493d}.item{border:1px solid #d8e4df;border-radius:14px;padding:14px;margin:12px 0}label{display:block;font-weight:650;margin:12px 0 5px}select,input,textarea{width:100%;padding:11px;border:1px solid #bccfc8;border-radius:10px;font-size:16px;background:white;color:#163f35}textarea{min-height:85px}.small{font-size:13px;color:#637b72}.result{background:#f1f8f5;border-left:5px solid #198466;border-radius:12px;padding:16px;margin-top:15px}.result strong{font-size:21px}.tag{display:inline-block;background:#e0f1e9;padding:7px 10px;border-radius:12px;margin:4px 3px;font-size:14px}details{margin-top:16px;background:white;border-radius:12px;padding:15px;border:1px solid #dce7e3}summary{font-weight:700;cursor:pointer}p{line-height:1.6}.hidden{display:none}button{cursor:pointer}button:disabled{opacity:.45}.settings-row{padding:12px;border:1px solid #dce7e3;border-radius:12px;margin:10px 0}.settings-row button{padding:8px 12px;border-radius:9px;border:1px solid #c9d8d2;background:#fff;margin:4px}.warn{color:#94511b;background:#fff5e8;padding:10px;border-radius:10px}.mini{font-size:13px}</style></head><body><main><header><h1 id="appTitle">我說的算</h1><p id="appSubtitle">屌哥聖經｜五大原則 × 空房流程圖｜v11｜離線測試版</p><button id="settingsOpen" type="button" style="margin-top:14px;background:#ffffff25;border:1px solid #ffffff88;color:white;border-radius:10px;padding:9px 12px">⚙ 自訂名稱與規則模板</button></header><div id="settings" class="panel hidden" style="margin-top:15px"></div><div id="progress" class="progress"></div><section class="panel"><h2 id="heading"></h2><div id="body"></div><div class="nav"><button class="secondary" id="prev">← 上一步</button><button class="primary" id="next">下一步 →</button></div></section><details><summary>查看接刀判斷依據</summary><p>急一搶救生命優先；有急刀房時急二、急三原則由急刀房處理；無急刀房時閒置房優先承接急刀；支援醫師及原房同科使用優先；跳台不得造成不合理延誤。</p><p>第一間空房：支援醫師 ＞ 原房同科使用 ＞ 急二 ＞ 急三。原房同科候選若皆有 Key 單時間，依較早時間排序；急診類型由系統自動識別。第二間空房：若第一間接同科常規刀，第二間僅依急二 ＞ 急三排序，無急二／急三時不得自動改接常規刀；若第一間接急診刀，常規跳台 ＞ 急二 ＞ 急三。</p><p class="small">急一永遠列為最高調度優先；但進房準備與房間可用性仍需確認。未填選填時間時照已知條件判斷；若有填寫等待時間則納入評估，無法確定延誤風險時交控台決定。不以 Key 時間取代急診順位。</p><p class="small">原排定房間的常規手術不列入空房競爭。若規則衝突或等待時限未明，須由控台確認。</p></details><p class="small">測試工具，請勿輸入姓名或病歷號。結果僅供控台輔助，不作為正式接刀核准。</p></main><script>
+function evaluate(s){
+ const cases=s.cases||[];
+ const out=(status,pick,reason,basis,extra='')=>({status,pick,reason,basis,extra});
+ const name=c=>c.dept+' '+c.type;
+ const emergency=c=>['急一','急二','急三'].includes(c.type);
+ const ready=c=>c.ready==='now';
+ const same=c=>!!s.origin&&s.origin!=='無固定科別'&&c.dept===s.origin;
+ const keyTime=c=>c.key&&Number.isFinite(Date.parse(c.key))?Date.parse(c.key):null;
+ const hasNumber=v=>v!==undefined&&v!==null&&String(v).trim()!==''&&Number.isFinite(Number(v))&&Number(v)>=0;
+ const emergencyRank=c=>c.type==='急二'?0:c.type==='急三'?1:2;
+ if(!cases.length)return out('需補充資料','—','請新增待接手術。','基本資料');
+ const ones=cases.filter(c=>c.type==='急一');
+ if(ones.length)return out('急一最高優先',ones.map(name).join('、'),'急一優先進行調度；若房間或病人尚未備妥，須立即由控台協調，並非表示可直接進房。','原則一');
+ if(s.roomStatus==='busy')return out('房間尚未可用','—','目前手術尚未結束，不能當成已空房。','空房適用範圍',hasNumber(s.remaining)?'預估剩餘 '+s.remaining+' 分鐘，仍須考慮整理時間。':'');
+ if(s.erRoom==='unknown')return out('需控台確認','—','急刀房狀態不明，無法確定適用流程。','原則二、三');
+ if(s.order==='second'&&s.first==='unknown')return out('需控台確認','—','第二間空房須知道第一間接刀類型。','空房流程圖');
+ const available=cases.filter(ready);
+ if(!available.length)return out('目前無可進房手術','—','目前候選手術均尚未可進房。','術前準備');
+ // 分開判斷「原房同科」與「手術類型」，不能把同科等同常規刀。
+ let pool=[],reason='',basis='',route='';
+ if(s.order==='second'){
+   if(s.first==='same'){
+     pool=available.filter(c=>c.type==='急二'||c.type==='急三');
+     reason='第一間已接同科常規刀，第二間依急二、急三處理。';basis='第二間空房流程：第一間接同科常規刀';route='emergency';
+   }else{
+     const jump=available.filter(c=>c.type==='當天跳台');
+     pool=jump.length?jump:available.filter(c=>c.type==='急二'||c.type==='急三');
+     reason=jump.length?'第一間已接急診刀，第二間優先常規跳台。':'第一間已接急診刀，第二間依急二、急三處理。';basis='第二間空房流程：第一間接急診刀';route=jump.length?'jump':'emergency';
+   }
+ }else if(s.erRoom==='yes'){
+   const routine=available.filter(c=>!emergency(c));
+   const support=routine.filter(c=>c.support);
+   const sameRoutine=routine.filter(same);
+   pool=support.length?support:sameRoutine.length?sameRoutine:routine;
+   route=support.length?'support':sameRoutine.length?'same':'routine';
+   reason=support.length?'支援醫師優先。':sameRoutine.length?'原房同科使用優先。':'有急刀房時，其他空房優先日間常規手術。';basis='原則二、四';
+ }else{
+   const support=available.filter(c=>c.support);
+   const sameDept=available.filter(same);
+   const er2=available.filter(c=>c.type==='急二');
+   const er3=available.filter(c=>c.type==='急三');
+   if(support.length){pool=support;route='support';reason='支援醫師優先於急二、急三及一般非支援常規刀。';basis='原則四／第一間空房流程';}
+   else if(sameDept.length){pool=sameDept;route='same';reason='依原空房科別判斷同科使用優先；同科可包含急診刀，並非只有常規刀。';basis='原則四／第一間空房流程';}
+   else if(er2.length){pool=er2;route='emergency';reason='沒有支援或原房同科候選，優先急二。';basis='原則三／第一間空房流程';}
+   else if(er3.length){pool=er3;route='emergency';reason='沒有更高順位候選，優先急三。';basis='原則三／第一間空房流程';}
+   else {pool=available.filter(c=>!emergency(c));route='routine';reason='非同科常規刀無明定相互順位。';basis='原則四、五';}
+ }
+ if(!pool.length)return out('需控台確認','—','沒有符合目前空房流程的可進房候選，不擅自改用其他順位。',basis||'空房流程圖');
+ // 同科隊列若皆有 Key 時間，按較早 Key；缺資料時不能擅自以輸入順序決定。
+ if(pool.length>1 && pool.every(same)){
+   const keyed=pool.map(c=>({c,t:keyTime(c)}));
+   if(keyed.every(x=>x.t!==null)){
+     keyed.sort((a,b)=>a.t-b.t);
+     if(keyed[0].t!==keyed[1].t)pool=[keyed[0].c];
+   }else{
+     // 無完整 Key 時，同科急診與常規混合的隊列缺乏可核對的先後資料。
+     const types=new Set(pool.map(c=>c.type));
+     if(types.size>1)return out('需控台確認',pool.map(name).join('、'),'同科候選包含不同手術類型，且 Key 時間不足，無法確定同科隊列先後；請控台確認急診是否改走急診順位。',basis);
+   }
+ }
+ if(pool.length>1 && pool.every(c=>c.type==='急二'||c.type==='急三')){
+   const best=Math.min(...pool.map(emergencyRank));pool=pool.filter(c=>emergencyRank(c)===best);
+ }
+ if(pool.length>1)return out('需控台確認',pool.map(name).join('、'),'多台同順位候選無法依已知條件區分，請控台決定。',basis);
+ const chosen=pool[0];
+ // 時間選填；有明確等待時間且可能影響急診時，交由控台評估。
+ const timed=cases.filter(c=>emergency(c)&&!ready(c)&&hasNumber(c.waitMinutes));
+ if(timed.length&&!emergency(chosen)&&s.erRoom==='no')return out('需控台確認',name(chosen),'另有急診刀提供可進房等待時間，是否造成延誤須由控台判斷。',basis,timed.map(c=>name(c)+'：'+c.waitMinutes+'分鐘後可進房').join('、'));
+ if(s.note&&s.note.trim())return out('需控台確認',name(chosen),'已依結構化資料初步排序，但補充文字未經程式理解，須由控台確認。',basis,'補充：'+s.note);
+ return out('建議優先接刀',name(chosen),reason,basis);
+}
+if(typeof module!=='undefined')module.exports={evaluate};
+
+const depts=['無固定科別','骨科','眼科','一般外科','泌尿科','婦產科','神經外科','胸腔外科','心臟外科','乳房外科','其他科別'];const cdepts=depts.slice(1);const types=['常規刀','當天跳台','急一','急二','急三'];let step=0;let state={roomStatus:'empty',remaining:0,origin:'無固定科別',erRoom:'no',order:'first',first:'unknown',cases:[{dept:'骨科',type:'常規刀',ready:'now',support:false,key:'',waitMinutes:''}],note:''};
+const $=id=>document.getElementById(id);const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function choices(field,items){return '<div class="choices">'+items.map(([value,label])=>`<button type="button" class="choice ${state[field]===value?'selected':''}" data-field="${field}" data-value="${escapeHtml(value)}">${escapeHtml(label)}</button>`).join('')+'</div>'}
+function optionList(values,current){return values.map(v=>`<option ${v===current?'selected':''} value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('')}
+function render(){const titles=['目前房間狀況','原房科別與急刀房','空房接刀順序','有哪些待接手術？','時間及補充條件','確認並產生評估'];$('heading').textContent=`${step+1}．${titles[step]}`;$('progress').innerHTML=titles.map((_,i)=>`<span class="${i<=step?'on':''}"></span>`).join('');let h='';
+if(step===0)h='<h3>目前房間能使用嗎？</h3>'+choices('roomStatus',[['empty','已經空房'],['busy','手術尚未結束']])+(state.roomStatus==='busy'?'<label>目前手術預估還要幾分鐘結束？</label><input id="remaining" type="number" min="0" value="'+state.remaining+'">':'');
+if(step===1)h='<h3>原本是哪一科的房間？</h3>'+choices('origin',depts.map(x=>[x,x]))+'<h3>急刀房狀況</h3>'+choices('erRoom',[['no','未開設'],['yes','已開設'],['unknown','不確定']]);
+if(step===2)h='<h3>這是第幾間空房？</h3>'+choices('order',[['first','第一間'],['second','第二間']])+(state.order==='second'?'<h3>第一間已經接哪一類手術？</h3>'+choices('first',[['same','同科常規刀'],['emergency','急診刀'],['unknown','不確定']]):'');
+if(step===3){h=state.cases.map((c,i)=>`<div class="item"><b>第 ${i+1} 台待接手術</b><label>科別</label><select data-index="${i}" data-key="dept">${optionList(cdepts,c.dept)}</select><label>類型</label><select data-index="${i}" data-key="type">${optionList(types,c.type)}</select><label>是否支援醫師</label><select data-index="${i}" data-key="support"><option value="no" ${!c.support?'selected':''}>否</option><option value="yes" ${c.support?'selected':''}>是</option></select><label>何時可進房</label><select data-index="${i}" data-key="ready"><option value="now" ${c.ready==='now'?'selected':''}>現在可進房</option><option value="later" ${c.ready==='later'?'selected':''}>尚未可進房</option></select><label>預計還要幾分鐘可進房（選填；未填依已知條件判斷）</label><input type="number" min="0" placeholder="未知，由控台判斷" data-index="${i}" data-key="waitMinutes" value="${escapeHtml(c.waitMinutes||'')}"><label>Key 刀時間（選填）</label><input type="datetime-local" data-index="${i}" data-key="key" value="${escapeHtml(c.key||'')}">${state.cases.length>1?`<button class="secondary" style="margin-top:12px" data-remove="${i}">刪除這台</button>`:''}</div>`).join('')+'<button class="primary" id="add">＋ 新增待接手術</button>';}
+if(step===4)h='<label>預估整理房間時間（分鐘，可不填）</label><input id="cleanup" type="number" min="0" placeholder="例如 15" value="'+escapeHtml(state.cleanup||'')+'"><label>補充說明（選填）</label><textarea id="note" placeholder="例如：急三還要30分鐘才能進房、醫師下午離院...">'+escapeHtml(state.note)+'</textarea><p class="small">離線版不會自動理解補充文字；補充文字無法由離線程式理解，若有填寫會請控台確認。</p>';
+if(step===5)h=`<p>房間：${state.roomStatus==='empty'?'已空房':'尚未結束'}｜原房：${escapeHtml(state.origin)}<br>急刀房：${state.erRoom==='no'?'未開設':state.erRoom==='yes'?'已開設':'不確定'}｜${state.order==='first'?'第一間':'第二間'}空房</p>`+state.cases.map((c,i)=>`<span class="tag">${i+1}. ${escapeHtml(c.dept)} ${escapeHtml(c.type)} ${c.ready==='now'?'可進房':'尚未可進房'} ${c.key?'｜Key '+escapeHtml(c.key.replace('T',' ')):''}</span>`).join('')+'<p><button class="primary" id="assess">產生接刀建議</button></p><div id="output"></div>';
+$('body').innerHTML=h;$('prev').disabled=step===0;$('next').textContent=step===5?'重新評估':'下一步 →';
+document.querySelectorAll('[data-field]').forEach(b=>b.onclick=()=>{state[b.dataset.field]=b.dataset.value;render()});document.querySelectorAll('[data-index]').forEach(el=>{const update=()=>{const c=state.cases[+el.dataset.index];c[el.dataset.key]=el.dataset.key==='support'?el.value==='yes':el.value;};el.onchange=update;el.oninput=update;});document.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{state.cases.splice(+b.dataset.remove,1);render()});if($('add'))$('add').onclick=()=>{state.cases.push({dept:'泌尿科',type:'急三',ready:'now',support:false,key:'',waitMinutes:''});render()};if($('assess'))$('assess').onclick=()=>{const r=evaluate(state);$('output').innerHTML=`<div class="result"><strong>${escapeHtml(r.status)}</strong><h3>建議：${escapeHtml(r.pick)}</h3><p><b>原因：</b>${escapeHtml(r.reason)}</p><p><b>依據：</b>${escapeHtml(r.basis)}</p>${r.extra?`<p>${escapeHtml(r.extra)}</p>`:''}${state.note?'<p class="small">⚠️ 已填補充文字，離線版未能理解內容，若會改變優先順序須控台確認。</p>':''}</div>`};}
+function save(){if(step===0&&$('remaining'))state.remaining=Number($('remaining').value)||0;if(step===4){state.note=$('note').value;state.cleanup=$('cleanup').value;}}
+$('prev').onclick=()=>{save();step=Math.max(0,step-1);render()};$('next').onclick=()=>{save();if(step===5){step=0;state.cases=[{dept:'骨科',type:'常規刀',ready:'now',support:false,key:'',waitMinutes:''}];}else step++;render()};
+const DEFAULT_TITLE='我說的算',DEFAULT_SUBTITLE='屌哥聖經｜五大原則 × 空房流程圖｜v11｜離線測試版';
+function readPrefs(){try{return JSON.parse(localStorage.getItem('orBiblePrefsV11')||'{}')}catch(e){return {}}}
+let prefs=readPrefs();window.userRules=Array.isArray(prefs.rules)?prefs.rules:[];
+function persistPrefs(){prefs.rules=window.userRules;try{localStorage.setItem('orBiblePrefsV11',JSON.stringify(prefs));return true}catch(e){alert('儲存失敗，請確認瀏覽器允許本機儲存');return false}}
+function updateBrand(){document.getElementById('appTitle').textContent=prefs.title||DEFAULT_TITLE;document.getElementById('appSubtitle').textContent=prefs.subtitle||DEFAULT_SUBTITLE;document.title=(prefs.title||DEFAULT_TITLE)+'｜接刀助手'}
+const orderLabels={all:'全部空房',first:'第一間空房',second:'第二間空房'};
+function ruleSelect(items,value,attr){return '<select '+attr+'>'+items.map(([v,t])=>'<option value="'+v+'" '+(v===value?'selected':'')+'>'+escapeHtml(t)+'</option>').join('')+'</select>'}
+function renderSettings(){const root=document.getElementById('settings');root.innerHTML=`<h2>自訂名稱與規則模板</h2><label>網頁大標題</label><input id="setTitle" maxlength="40" value="${escapeHtml(prefs.title||DEFAULT_TITLE)}"><label>網頁小標題</label><input id="setSubtitle" maxlength="100" value="${escapeHtml(prefs.subtitle||DEFAULT_SUBTITLE)}"><button class="primary" id="saveBrand" style="margin-top:12px">儲存名稱</button><h3>固定核心規則（不可改）</h3><p class="small">急一最高優先；第一間空房：支援醫師 ＞ 原房同科使用 ＞ 急二 ＞ 急三；第二間依第一間接刀類型判斷。急刀房開設狀態仍須依原則處理。</p><h3>自訂覆核模板</h3><p class="warn mini">新增模板僅能在符合條件時顯示「需控台確認」，不能自動改變臨床接刀順位。這樣可讓相似情況共用模板，又不會覆蓋急一等核心原則。</p><div id="ruleRows"></div><button class="primary" id="addRule">＋ 新增覆核模板</button><p class="small">設定只存在此手機的目前瀏覽器；清除瀏覽資料可能遺失。建議匯出備份。</p><button class="secondary" id="exportRules">匯出設定 JSON</button> <button class="secondary" id="importRules">匯入設定 JSON</button><input id="importFile" type="file" accept="application/json,.json" style="display:none"><p><button class="secondary" id="closeSettings">返回接刀評估</button></p>`;
+ document.getElementById('saveBrand').onclick=()=>{prefs.title=document.getElementById('setTitle').value.trim().slice(0,40)||DEFAULT_TITLE;prefs.subtitle=document.getElementById('setSubtitle').value.trim().slice(0,100)||DEFAULT_SUBTITLE;persistPrefs();updateBrand();alert('名稱已儲存')};
+ document.getElementById('addRule').onclick=()=>{window.userRules.push({name:'新覆核模板',enabled:true,order:'all',dept:'all',type:'all',support:'all',action:'review'});persistPrefs();renderSettings()};
+ document.getElementById('closeSettings').onclick=()=>root.classList.add('hidden');
+ document.getElementById('exportRules').onclick=()=>{const blob=new Blob([JSON.stringify({title:prefs.title||DEFAULT_TITLE,subtitle:prefs.subtitle||DEFAULT_SUBTITLE,rules:window.userRules},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='屌哥聖經_自訂設定.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000)};
+ document.getElementById('importRules').onclick=()=>document.getElementById('importFile').click();
+ document.getElementById('importFile').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const data=JSON.parse(await file.text());if(!Array.isArray(data.rules)||data.rules.length>100)throw Error('格式錯誤');const valid=data.rules.every(r=>r&&typeof r.name==='string'&&r.action==='review'&&['all','first','second'].includes(r.order)&&['all',...depts].includes(r.dept)&&['all',...types].includes(r.type)&&['all','yes','no'].includes(r.support));if(!valid)throw Error('包含不支援的規則');window.userRules=data.rules.map(r=>({...r,name:r.name.slice(0,80),enabled:!!r.enabled}));prefs.title=String(data.title||DEFAULT_TITLE).slice(0,40);prefs.subtitle=String(data.subtitle||DEFAULT_SUBTITLE).slice(0,100);persistPrefs();updateBrand();renderSettings();alert('設定匯入完成')}catch(err){alert('無法匯入：'+err.message)}};
+ const rows=document.getElementById('ruleRows');rows.innerHTML=window.userRules.map((r,i)=>`<div class="settings-row"><label>模板名稱</label><input data-r="${i}" data-k="name" maxlength="80" value="${escapeHtml(r.name)}"><label><input type="checkbox" data-r="${i}" data-k="enabled" ${r.enabled?'checked':''} style="width:auto"> 啟用</label><label>適用空房</label>${ruleSelect(Object.entries(orderLabels),r.order,`data-r="${i}" data-k="order"`)}<label>原房科別</label>${ruleSelect([['all','不限'],...depts.map(d=>[d,d])],r.dept,`data-r="${i}" data-k="dept"`)}<label>候選手術類型</label>${ruleSelect([['all','不限'],...types.map(t=>[t,t])],r.type,`data-r="${i}" data-k="type"`)}<label>是否支援醫師</label>${ruleSelect([['all','不限'],['yes','是'],['no','否']],r.support,`data-r="${i}" data-k="support"`)}<p class="small">符合條件 → 需控台確認</p><button data-del="${i}">刪除此模板</button></div>`).join('')||'<p class="small">尚無自訂模板，預設照院內核心流程判斷。</p>';
+ rows.querySelectorAll('[data-r]').forEach(el=>el.onchange=()=>{const r=window.userRules[+el.dataset.r];r[el.dataset.k]=el.dataset.k==='enabled'?el.checked:el.value;persistPrefs()});rows.querySelectorAll('[data-del]').forEach(el=>el.onclick=()=>{if(confirm('確定刪除這個模板？')){window.userRules.splice(+el.dataset.del,1);persistPrefs();renderSettings()}});
+}
+document.getElementById('settingsOpen').onclick=()=>{const root=document.getElementById('settings');root.classList.toggle('hidden');if(!root.classList.contains('hidden'))renderSettings()};
+updateBrand();
+render();
+</script></body></html>
